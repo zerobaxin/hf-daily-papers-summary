@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HF Daily Papers Summary</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-secondary: #8b949e;
+    --accent: #f78166;
+    --accent-hover: #ffa28b;
+    --tag-bg: #1f2937;
+    --tag-active: #f78166;
+    --link: #58a6ff;
+    --upvote: #3fb950;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 2rem 1rem;
+    text-align: center;
+  }
+  header h1 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+  }
+  header p { color: var(--text-secondary); font-size: 0.9rem; }
+  .container { max-width: 960px; margin: 0 auto; padding: 1.5rem 1rem; }
+
+  /* Search bar */
+  .search-bar {
+    position: relative;
+    margin-bottom: 1rem;
+  }
+  .search-bar input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-bar input:focus { border-color: var(--accent); }
+  .search-bar::before {
+    content: '🔍';
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.9rem;
+  }
+
+  /* Stats row */
+  .stats {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .stats span {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+  .stats span strong { color: var(--text); }
+
+  /* Sort controls */
+  .sort-controls {
+    display: flex;
+    gap: 0.5rem;
+    margin-left: auto;
+  }
+  .sort-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 0.3rem 0.75rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+  }
+  .sort-btn:hover { border-color: var(--accent); color: var(--text); }
+  .sort-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* Tags section */
+  .tags-section { margin-bottom: 1.5rem; }
+  .tags-header {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    user-select: none;
+  }
+  .tags-header .toggle { font-size: 0.7rem; }
+  .tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    max-height: 200px;
+    overflow-y: auto;
+    transition: max-height 0.3s;
+  }
+  .tags-container.collapsed { max-height: 0; overflow: hidden; }
+  .tag {
+    background: var(--tag-bg);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .tag:hover { border-color: var(--accent); color: var(--text); }
+  .tag.active {
+    background: var(--tag-active);
+    color: #fff;
+    border-color: var(--tag-active);
+  }
+  .active-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.75rem;
+  }
+  .active-tag {
+    background: var(--accent);
+    color: #fff;
+    padding: 0.2rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    cursor: pointer;
+  }
+  .active-tag .x { font-weight: bold; opacity: 0.7; }
+  .active-tag .x:hover { opacity: 1; }
+
+  /* Paper cards */
+  .papers-list { display: flex; flex-direction: column; gap: 0.75rem; }
+  .paper-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+    transition: border-color 0.2s;
+  }
+  .paper-card:hover { border-color: var(--accent); }
+  .paper-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+  .paper-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--link);
+    text-decoration: none;
+    line-height: 1.35;
+  }
+  .paper-title:hover { text-decoration: underline; }
+  .upvotes {
+    background: rgba(63, 185, 80, 0.15);
+    color: var(--upvote);
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .paper-summary {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    margin-bottom: 0.75rem;
+    line-height: 1.5;
+  }
+  .paper-meta {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .paper-date {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+  }
+  .paper-link {
+    font-size: 0.78rem;
+    color: var(--link);
+    text-decoration: none;
+  }
+  .paper-link:hover { text-decoration: underline; }
+  .paper-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-top: 0.5rem;
+  }
+  .paper-tag {
+    background: var(--tag-bg);
+    color: var(--text-secondary);
+    padding: 0.15rem 0.45rem;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .paper-tag:hover { color: var(--accent); }
+
+  .no-results {
+    text-align: center;
+    color: var(--text-secondary);
+    padding: 3rem 1rem;
+    font-size: 1rem;
+  }
+  .load-more {
+    display: block;
+    margin: 1.5rem auto;
+    padding: 0.6rem 1.5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: border-color 0.2s;
+  }
+  .load-more:hover { border-color: var(--accent); }
+
+  footer {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    border-top: 1px solid var(--border);
+    margin-top: 2rem;
+  }
+  footer a { color: var(--link); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📄 HF Daily Papers Summary</h1>
+  <p>Browse &amp; search top HuggingFace Daily Papers — with tags, filters, and direct links</p>
+</header>
+
+<div class="container">
+  <div class="search-bar">
+    <input type="text" id="searchInput" placeholder="Search papers by title, summary, or keyword…" />
+  </div>
+
+  <div class="stats" id="statsRow">
+    <span><strong id="totalCount">0</strong> papers</span>
+    <span>·</span>
+    <span><strong id="shownCount">0</strong> shown</span>
+    <div class="sort-controls">
+      <button class="sort-btn active" data-sort="upvotes">Top</button>
+      <button class="sort-btn" data-sort="date">Newest</button>
+      <button class="sort-btn" data-sort="title">A-Z</button>
+    </div>
+  </div>
+
+  <div class="active-tags" id="activeTags"></div>
+
+  <div class="tags-section">
+    <div class="tags-header" id="tagsToggle">
+      🏷️ Tags <span class="toggle" id="toggleIcon">▾</span>
+    </div>
+    <div class="tags-container" id="tagsContainer"></div>
+  </div>
+
+  <div class="papers-list" id="papersList"></div>
+  <button class="load-more" id="loadMore" style="display:none;">Load more</button>
+</div>
+
+<footer>
+  Data from <a href="https://huggingface.co/papers" target="_blank">HuggingFace Daily Papers</a> ·
+  Repo: <a href="https://github.com/zerobaxin/hf-daily-papers-summary" target="_blank">zerobaxin/hf-daily-papers-summary</a>
+</footer>
+
+<script>
+let allPapers = [];
+let filteredPapers = [];
+let activeTagSet = new Set();
+let currentSort = 'upvotes';
+let shownCount = 0;
+const PAGE_SIZE = 20;
+
+// Load data
+fetch('papers.json')
+  .then(r => r.json())
+  .then(data => {
+    allPapers = data;
+    buildTagCloud();
+    applyFilters();
+  });
+
+// Search
+let searchTimeout;
+document.getElementById('searchInput').addEventListener('input', e => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => { shownCount = 0; applyFilters(); }, 200);
+});
+
+// Sort buttons
+document.querySelectorAll('.sort-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentSort = btn.dataset.sort;
+    shownCount = 0;
+    applyFilters();
+  });
+});
+
+// Tags toggle
+let tagsOpen = true;
+document.getElementById('tagsToggle').addEventListener('click', () => {
+  tagsOpen = !tagsOpen;
+  document.getElementById('tagsContainer').classList.toggle('collapsed', !tagsOpen);
+  document.getElementById('toggleIcon').textContent = tagsOpen ? '▾' : '▸';
+});
+
+// Load more
+document.getElementById('loadMore').addEventListener('click', () => {
+  shownCount += PAGE_SIZE;
+  renderPapers();
+});
+
+function buildTagCloud() {
+  const kwCount = {};
+  allPapers.forEach(p => {
+    (p.keywords || []).forEach(kw => {
+      kwCount[kw] = (kwCount[kw] || 0) + 1;
+    });
+  });
+  // Sort by frequency
+  const sorted = Object.entries(kwCount).sort((a, b) => b[1] - a[1]);
+  const container = document.getElementById('tagsContainer');
+  sorted.forEach(([kw, count]) => {
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.textContent = `${kw} (${count})`;
+    tag.dataset.keyword = kw;
+    tag.addEventListener('click', () => toggleTag(kw));
+    container.appendChild(tag);
+  });
+}
+
+function toggleTag(kw) {
+  if (activeTagSet.has(kw)) activeTagSet.delete(kw);
+  else activeTagSet.add(kw);
+  // Update tag cloud active state
+  document.querySelectorAll('#tagsContainer .tag').forEach(t => {
+    t.classList.toggle('active', activeTagSet.has(t.dataset.keyword));
+  });
+  shownCount = 0;
+  applyFilters();
+  renderActiveTags();
+}
+
+function renderActiveTags() {
+  const container = document.getElementById('activeTags');
+  container.innerHTML = '';
+  activeTagSet.forEach(kw => {
+    const el = document.createElement('span');
+    el.className = 'active-tag';
+    el.innerHTML = `${kw} <span class="x">×</span>`;
+    el.addEventListener('click', () => toggleTag(kw));
+    container.appendChild(el);
+  });
+}
+
+function applyFilters() {
+  const query = document.getElementById('searchInput').value.toLowerCase().trim();
+  filteredPapers = allPapers.filter(p => {
+    // Search filter
+    let matchSearch = true;
+    if (query) {
+      const haystack = (p.title + ' ' + (p.summary || '') + ' ' + (p.keywords || []).join(' ')).toLowerCase();
+      matchSearch = haystack.includes(query);
+    }
+    // Tag filter
+    let matchTags = true;
+    if (activeTagSet.size > 0) {
+      matchTags = (p.keywords || []).some(kw => activeTagSet.has(kw));
+    }
+    return matchSearch && matchTags;
+  });
+
+  // Sort
+  if (currentSort === 'upvotes') {
+    filteredPapers.sort((a, b) => b.upvotes - a.upvotes);
+  } else if (currentSort === 'date') {
+    filteredPapers.sort((a, b) => b.date.localeCompare(a.date) || b.upvotes - a.upvotes);
+  } else if (currentSort === 'title') {
+    filteredPapers.sort((a, b) => a.title.localeCompare(b.title));
+  }
+
+  document.getElementById('totalCount').textContent = allPapers.length;
+  document.getElementById('shownCount').textContent = filteredPapers.length;
+
+  if (shownCount === 0) shownCount = PAGE_SIZE;
+  renderPapers();
+}
+
+function renderPapers() {
+  const list = document.getElementById('papersList');
+  const papersToShow = filteredPapers.slice(0, shownCount);
+
+  if (papersToShow.length === 0) {
+    list.innerHTML = '<div class="no-results">No papers match your search or filters.</div>';
+    document.getElementById('loadMore').style.display = 'none';
+    return;
+  }
+
+  list.innerHTML = papersToShow.map(p => `
+    <div class="paper-card">
+      <div class="paper-card-header">
+        <a class="paper-title" href="${p.url}" target="_blank">${escHtml(p.title)}</a>
+        <span class="upvotes">▲ ${p.upvotes}</span>
+      </div>
+      <div class="paper-summary">${escHtml(p.summary || '')}</div>
+      <div class="paper-meta">
+        <span class="paper-date">${p.date}</span>
+        <a class="paper-link" href="${p.arxiv_url}" target="_blank">arXiv</a>
+        <a class="paper-link" href="${p.url}" target="_blank">HF Paper</a>
+      </div>
+      ${p.keywords && p.keywords.length ? `
+        <div class="paper-tags">
+          ${p.keywords.slice(0, 8).map(kw => `<span class="paper-tag" onclick="toggleTag('${escAttr(kw)}')">${escHtml(kw)}</span>`).join('')}
+          ${p.keywords.length > 8 ? `<span class="paper-tag">+${p.keywords.length - 8}</span>` : ''}
+        </div>
+      ` : ''}
+    </div>
+  `).join('');
+
+  const btn = document.getElementById('loadMore');
+  btn.style.display = shownCount < filteredPapers.length ? 'block' : 'none';
+}
+
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+function escAttr(s) {
+  return s.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+</script>
+</body>
+</html>
